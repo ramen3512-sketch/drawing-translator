@@ -14,6 +14,18 @@ import io
 client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
 
 st.set_page_config(layout="wide", page_title="Trans-Pacific Drawing System")
+# --- ⬇︎ ここから追加 ⬇︎ ---
+# パスワード認証機能
+import hmac
+if "APP_PASSWORD" in st.secrets:
+    password = st.sidebar.text_input("パスワードを入力してください", type="password")
+    if not password:
+        st.warning("🔒 ログインしてください")
+        st.stop()  # パスワード未入力ならここで処理を止める
+    elif not hmac.compare_digest(password, st.secrets["APP_PASSWORD"]):
+        st.error("❌ パスワードが違います")
+        st.stop()  # パスワード間違いならここで処理を止める
+# --- ⬆︎ ここまで追加 ⬆︎ ---
 
 # セッション状態の初期化
 if 'final_edits' not in st.session_state:
