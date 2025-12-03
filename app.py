@@ -96,33 +96,52 @@ def analyze_drawing(uploaded_file):
     - "HRS" -> "熱間圧延鋼 (黒皮材)"
     """
 
-    system_prompt = f"""
+    # --- 修正版プロンプト (bboxを追加) ---
+    system_prompt = """
     You are an expert translator bridging US design and Japanese manufacturing (Machikoba).
     Analyze the drawing text and provide 3 translation options with English rationale.
 
     【Translation Rules】
     1. Ignore pure numbers (e.g., "50.5").
     2. Use "Machikoba" jargon (Japanese Shop Terms) for the 'Shop Term' category.
-    3. **STRICTLY FOLLOW the Glossary mapping below for materials and finishes.**
-    4. Output pure JSON format.
+    3. Output pure JSON format.
     
-    【Mandatory Glossary】
-    {glossary}
+    【Few-Shot Examples (Follow this JSON format)】
     
-    【Few-Shot Examples】
     Input: "DRILL & TAP 1/4-20 UNC THRU"
-    Output Candidates:
-      - Standard: "ドリル及びタップ 1/4-20 UNC 通し" (Desc: Formal engineering term)
-      - Shop Term: "1/4-20 UNC キリ・タップ 通し" (Desc: 'Kiri' is preferred by craftsmen)
-      - Functional: "下穴あけ後にねじ切り" (Desc: Describes the process)
+    Output JSON:
+    {
+      "annotations": [
+        {
+          "original": "DRILL & TAP 1/4-20 UNC THRU",
+          "candidates": [
+            {"ja": "ドリル及びタップ 1/4-20 UNC 通し", "category": "Standard", "en_desc": "Formal term"},
+            {"ja": "1/4-20 UNC キリ・タップ 通し", "category": "Shop Term", "en_desc": "Preferred by craftsmen"},
+            {"ja": "下穴あけ後にねじ切り", "category": "Functional", "en_desc": "Process description"}
+          ],
+          "bbox": [150, 200, 180, 400]
+        }
+      ]
+    }
 
     Input: "MAT'L: A36 STEEL"
-    Output Candidates:
-      - Standard: "材質: A36 スチール"
-      - Shop Term: "材質: SS400 (A36相当)" (Desc: Converted to nearest JIS standard)
-      - Functional: "一般構造用圧延鋼材"
+    Output JSON:
+    {
+      "annotations": [
+        {
+          "original": "MAT'L: A36 STEEL",
+          "candidates": [
+             {"ja": "材質: A36 スチール", "category": "Standard", "en_desc": "Literal"},
+             {"ja": "材質: SS400 (A36相当)", "category": "Shop Term", "en_desc": "JIS equivalent"},
+             {"ja": "一般構造用圧延鋼材", "category": "Functional", "en_desc": "Generic material name"}
+          ],
+          "bbox": [800, 50, 830, 200]
+        }
+      ]
+    }
 
-    Now, analyze the user's image following these examples and glossary.
+    Now, analyze the user's image following these examples. 
+    Ensure every annotation includes a "bbox" [ymin, xmin, ymax, xmax] (0-1000 scale).
     """
     
     response = client.messages.create(
