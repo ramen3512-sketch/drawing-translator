@@ -76,53 +76,57 @@ def encode_image(uploaded_file):
 def analyze_drawing(uploaded_file):
     image_data = encode_image(uploaded_file)
     
-    # --- 🔥 ここが強化ポイント！(Few-Shot Prompting) ---
-    system_prompt = """
+    # --- 策2: 専門用語辞書 (ここに追加！) ---
+    # これを増やせば増やすほど、特定の単語に強くなります
+    glossary = """
+    - "A36" -> "SS400 (A36相当)"
+    - "1018" -> "S20C (1018相当)"
+    - "1045" -> "S45C (1045相当)"
+    - "4140" -> "SCM440 (4140相当)"
+    - "304 SS" -> "SUS304"
+    - "316 SS" -> "SUS316"
+    - "6061-T6" -> "A6061-T6"
+    - "7075-T6" -> "A7075-T6 (超々ジュラルミン)"
+    - "Delrin" -> "POM (ジュラコン/デルリン)"
+    - "Anodize" -> "アルマイト処理"
+    - "Black Oxide" -> "黒染め"
+    - "Chem Film" -> "アロジン処理 (Chem Film)"
+    - "Passivate" -> "不動態化処理 (パシべ)"
+    - "CRS" -> "冷間圧延鋼 (ミガキ材)"
+    - "HRS" -> "熱間圧延鋼 (黒皮材)"
+    """
+
+    system_prompt = f"""
     You are an expert translator bridging US design and Japanese manufacturing (Machikoba).
     Analyze the drawing text and provide 3 translation options with English rationale.
 
     【Translation Rules】
     1. Ignore pure numbers (e.g., "50.5").
     2. Use "Machikoba" jargon (Japanese Shop Terms) for the 'Shop Term' category.
-    3. Output pure JSON format.
+    3. **STRICTLY FOLLOW the Glossary mapping below for materials and finishes.**
+    4. Output pure JSON format.
     
-    【Few-Shot Examples (Follow these patterns)】
+    【Mandatory Glossary】
+    {glossary}
     
+    【Few-Shot Examples】
     Input: "DRILL & TAP 1/4-20 UNC THRU"
     Output Candidates:
       - Standard: "ドリル及びタップ 1/4-20 UNC 通し" (Desc: Formal engineering term)
       - Shop Term: "1/4-20 UNC キリ・タップ 通し" (Desc: 'Kiri' is preferred by craftsmen)
       - Functional: "下穴あけ後にねじ切り" (Desc: Describes the process)
 
-    Input: "C'BORE .38 DEEP .25"
+    Input: "MAT'L: A36 STEEL"
     Output Candidates:
-      - Standard: "座ぐり 径.38 深さ.25"
-      - Shop Term: "ザグリ φ.38 深さ.25" (Desc: 'Zaguri' is the standard shop term)
-      - Functional: "ボルト頭の逃げ加工"
+      - Standard: "材質: A36 スチール"
+      - Shop Term: "材質: SS400 (A36相当)" (Desc: Converted to nearest JIS standard)
+      - Functional: "一般構造用圧延鋼材"
 
-    Input: "BREAK ALL SHARP EDGES"
-    Output Candidates:
-      - Standard: "鋭利な角を除去のこと"
-      - Shop Term: "バリなきこと" (Desc: Common phrase 'Bari-naki-koto')
-      - Functional: "全周面取り処理"
-
-    Input: "MAT'L: 6061-T6 AL"
-    Output Candidates:
-      - Standard: "材質: 6061-T6 アルミニウム"
-      - Shop Term: "材質: A6061-T6" (Desc: JIS equivalent notation)
-      - Functional: "アルミ合金 (熱処理あり)"
-
-    Input: "U.O.S."
-    Output Candidates:
-       - Standard: "特記なき限り"
-       - Shop Term: "指示なき場所"
-       - Functional: "Unless Otherwise Specified"
-
-    Now, analyze the user's image following these examples.
+    Now, analyze the user's image following these examples and glossary.
     """
     
     response = client.messages.create(
-        model="claude-3-5-sonnet-20240620", 
+        model="claude-sonnet-4-20250514", 
         max_tokens=4096,
         temperature=0,
         system=system_prompt,
